@@ -1,39 +1,43 @@
 #!/usr/bin/python3
 """
-Log parsing
+Log parsing script
+Reads lines from stdin and computes metrics.
 """
 
 import sys
+import signal
+import re
 
-if __name__ == '__main__':
+status_codes = ['200', '301', '400', '401', '403', '404', '405', '500']
+counter = {code: 0 for code in status_codes}
+total_size = 0
+line_count = 0
 
-    filesize, count = 0, 0
-    codes = ["200", "301", "400", "401", "403", "404", "405", "500"]
-    stats = {k: 0 for k in codes}
+def print_stats():
+    """Prints the accumulated statistics"""
+    print("File size: {}".format(total_size))
+    for code in sorted(counter.keys()):
+        if counter[code]:
+            print("{}: {}".format(code, counter[code]))
 
-    def print_stats(stats: dict, file_size: int) -> None:
-        print("File size: {:d}".format(filesize))
-        for k, v in sorted(stats.items()):
-            if v:
-                print("{}: {}".format(k, v))
+try:
+    for line in sys.stdin:
+        match = re.match(
+            r'^\d+\.\d+\.\d+\.\d+ - \[.*?\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$',
+            line.strip()
+        )
+        if match:
+            code, size = match.groups()
+            total_size += int(size)
+            if code in counter:
+                counter[code] += 1
 
-    try:
-        for line in sys.stdin:
-            count += 1
-            data = line.split()
-            try:
-                status_code = data[-2]
-                if status_code in stats:
-                    stats[status_code] += 1
-            except BaseException:
-                pass
-            try:
-                filesize += int(data[-1])
-            except BaseException:
-                pass
-            if count % 10 == 0:
-                print_stats(stats, filesize)
-        print_stats(stats, filesize)
-    except KeyboardInterrupt:
-        print_stats(stats, filesize)
-        raise
+        line_count += 1
+        if line_count % 10 == 0:
+            print_stats()
+
+except KeyboardInterrupt:
+    print_stats()
+    raise
+finally:
+    print_stats()
