@@ -1,43 +1,51 @@
 #!/usr/bin/python3
 """
-Log parsing script
-Reads lines from stdin and computes metrics.
+Task 0. Log parsing
+
+A script that reads stdin line by line and computes metrics.
 """
 
 import sys
-import signal
-import re
 
-status_codes = ['200', '301', '400', '401', '403', '404', '405', '500']
-counter = {code: 0 for code in status_codes}
-total_size = 0
-line_count = 0
 
-def print_stats():
-    """Prints the accumulated statistics"""
-    print("File size: {}".format(total_size))
-    for code in sorted(counter.keys()):
-        if counter[code]:
-            print("{}: {}".format(code, counter[code]))
+def printStats(file_size, status):
+    """printStats
 
+    This function takes the total file size and the
+    statues that were called and prints them.
+
+    Arguments:
+        file_size (int): The total file size to be printed.
+        status (dict{int, int}): A dictionary of the statues that were called.
+    """
+    print("File size: {}".format(file_size))
+    for key, value in sorted(status.items()):
+        if value != 0:
+            print("{}: {}".format(key, value))
+
+
+total_file_size = 0
+count = 0
+possible_status = {200: 0, 301: 0, 400: 0, 401: 0,
+                   403: 0, 404: 0, 405: 0, 500: 0}
 try:
     for line in sys.stdin:
-        match = re.match(
-            r'^\d+\.\d+\.\d+\.\d+ - \[.*?\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$',
-            line.strip()
-        )
-        if match:
-            code, size = match.groups()
-            total_size += int(size)
-            if code in counter:
-                counter[code] += 1
+        args = line.split()
 
-        line_count += 1
-        if line_count % 10 == 0:
-            print_stats()
+        status_code = int(args[-2])
+        file_size = int(args[-1])
 
+        if status_code in possible_status:
+            possible_status[status_code] += 1
+
+        total_file_size += file_size
+        count += 1
+
+        if count == 10:
+            printStats(total_file_size, possible_status)
+            count = 0
+    printStats(total_file_size, possible_status)
 except KeyboardInterrupt:
-    print_stats()
     raise
 finally:
-    print_stats()
+    printStats(total_file_size, possible_status)
